@@ -62,7 +62,7 @@ const bodyPhotoPaths = [
 // --- 视觉配置中心 ---
 const CONFIG = {
   colors: {
-    emerald: '#004225', // 祖母绿 (这里被设为金色#FFD700了，可以改回 '#004225')暗金色/铜色 #B8860B
+    emerald: '#FFD700', // 祖母绿 (这里被设为金色了，可以改回 '#004225')
     gold: '#FFD700',    // 金色
     silver: '#ECEFF1',  // 银色
     red: '#D32F2F',     // 红色
@@ -99,8 +99,6 @@ const FoliageMaterial = shaderMaterial(
     float t = cubicInOut(uProgress);
     vec3 finalPos = mix(position, aTargetPos + noise, t);
     vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
-    // 🔴 修改这里：把 60.0 改为 30.0 或 40.0
-    // 这会让每个“树叶”粒子变小，看起来不那么像大方块
     gl_PointSize = (60.0 * (1.0 + aRandom)) / -mvPosition.z;
     gl_Position = projectionMatrix * mvPosition;
     vMix = t;
@@ -153,7 +151,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
         <bufferAttribute attach="attributes-aRandom" args={[randoms, 1]} />
       </bufferGeometry>
       {/* @ts-ignore */}
-      <foliageMaterial ref={materialRef} transparent depthWrite={false} blending={THREE.AdditiveBlending} /> 
+      <foliageMaterial ref={materialRef} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
     </points>
   );
 };
@@ -413,155 +411,6 @@ const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   );
 };
 
-// 👇👇👇 在这里添加下面的代码 👇👇👇
-
-// --- Component: Golden Sparkles (金色闪光粒子) ---
-const GoldenSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
-  const count = 80;
-  const groupRef = useRef<THREE.Group>(null);
-  const geometry = useMemo(() => new THREE.SphereGeometry(0.3, 8, 8), []);
-
-  const data = useMemo(() => {
-    return new Array(count).fill(0).map(() => {
-      const h = CONFIG.tree.height;
-      const y = (Math.random() * h) - (h / 2);
-      const rBase = CONFIG.tree.radius;
-      const currentRadius = (rBase * (1 - (y + (h/2)) / h)) * 1.2;
-      const theta = Math.random() * Math.PI * 2;
-      
-      const targetPos = new THREE.Vector3(
-        currentRadius * Math.cos(theta), 
-        y, 
-        currentRadius * Math.sin(theta)
-      );
-      
-      return {
-        position: targetPos,
-        speed: 1.5 + Math.random() * 2.5,
-        timeOffset: Math.random() * 100,
-        scale: 0.3 + Math.random() * 0.7
-      };
-    });
-  }, []);
-
-  useFrame((stateObj) => {
-    if (!groupRef.current) return;
-    const time = stateObj.clock.elapsedTime;
-    const isFormed = state === 'FORMED';
-
-    groupRef.current.children.forEach((child, i) => {
-      const mesh = child as THREE.Mesh;
-      const objData = data[i];
-      
-      const twinkle = (Math.sin(time * objData.speed + objData.timeOffset) + 1) / 2;
-      const intensity = isFormed ? (0.5 + twinkle * 2) : 0;
-      
-      if (mesh.material) {
-        (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = intensity;
-      }
-      
-      const scalePulse = 1 + twinkle * 0.3;
-      mesh.scale.setScalar(objData.scale * scalePulse);
-    });
-  });
-
-  return (
-    <group ref={groupRef}>
-      {data.map((obj, i) => (
-        <mesh 
-          key={i} 
-          position={obj.position}
-          geometry={geometry}
-        >
-          <meshStandardMaterial 
-            color={CONFIG.colors.gold}
-            emissive={CONFIG.colors.gold}
-            emissiveIntensity={0}
-            toneMapped={false}
-            transparent
-            opacity={0.7}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-};
-
-// --- Component: Burst Sparkles (爆发式闪光) ---
-//((const BurstSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
-  const pointsRef = useRef<THREE.Points>(null);
-  const [burstTime, setBurstTime] = useState(0);
-  
-  const { positions, scales, opacities } = useMemo(() => {
-    const count = 100;
-    const positions = new Float32Array(count * 3);
-    const scales = new Float32Array(count);
-    const opacities = new Float32Array(count);
-    
-    for (let i = 0; i < count; i++) {
-      const h = CONFIG.tree.height;
-      const y = (Math.random() * h) - (h / 2);
-      const rBase = CONFIG.tree.radius;
-      const currentRadius = (rBase * (1 - (y + (h/2)) / h)) * 1.5;
-      const theta = Math.random() * Math.PI * 2;
-      
-      positions[i * 3] = currentRadius * Math.cos(theta);
-      positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = currentRadius * Math.sin(theta);
-      
-      scales[i] = Math.random();
-      opacities[i] = 0;
-    }
-    
-    return { positions, scales, opacities };
-  }, []);
-
-  useFrame((stateObj) => {
-    if (!pointsRef.current || state !== 'FORMED') return;
-    
-    const time = stateObj.clock.elapsedTime;
-    const geometry = pointsRef.current.geometry;
-    const opacityAttr = geometry.attributes.aOpacity;
-    
-    if (Math.floor(time / 2) !== burstTime) {
-      setBurstTime(Math.floor(time / 2));
-      
-      for (let i = 0; i < opacities.length; i++) {
-        if (Math.random() < 0.2) {
-          opacities[i] = 1.0;
-        }
-      }
-    }
-    
-    for (let i = 0; i < opacities.length; i++) {
-      opacities[i] *= 0.95;
-      opacityAttr.setX(i, opacities[i]);
-    }
-    
-    opacityAttr.needsUpdate = true;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-aScale" args={[scales, 1]} />
-        <bufferAttribute attach="attributes-aOpacity" args={[opacities, 1]} />
-      </bufferGeometry>
-      <pointsMaterial
-        size={15}
-        color={CONFIG.colors.gold}
-        transparent
-        opacity={0.6}
-        sizeAttenuation
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-      />
-    </points>
-  );
-};))
-// 👆👆👆 添加到这里 👆👆👆
-
 // --- Main Scene Experience ---
 const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number }) => {
   const controlsRef = useRef<any>(null);
@@ -593,16 +442,12 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
            <ChristmasElements state={sceneState} />
            <FairyLights state={sceneState} />
            <TopStar state={sceneState} />
-            {/* 👇 添加金色闪光效果 */}
-          {/* <GoldenSparkles state={sceneState} */}
-        {/*  <BurstSparkles state={sceneState} /> */}
         </Suspense>
-        <Sparkles count={400} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
-        
+        <Sparkles count={600} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
       </group>
 
       <EffectComposer>
-        <Bloom luminanceThreshold={2.0} luminanceSmoothing={0.1} intensity={0.8} radius={0.5} mipmapBlur />
+        <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.1} intensity={1.5} radius={0.5} mipmapBlur />
         <Vignette eskil={false} offset={0.1} darkness={1.2} />
       </EffectComposer>
     </>
