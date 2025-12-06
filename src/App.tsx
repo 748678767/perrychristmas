@@ -62,7 +62,7 @@ const bodyPhotoPaths = [
 // --- 视觉配置中心 ---
 const CONFIG = {
   colors: {
-    emerald: '#B8860B', // 祖母绿 (这里被设为金色#FFD700了，可以改回 '#004225')暗金色/铜色 #B8860B
+    emerald: '#004225', // 祖母绿 (这里被设为金色#FFD700了，可以改回 '#004225')暗金色/铜色 #B8860B
     gold: '#FFD700',    // 金色
     silver: '#ECEFF1',  // 银色
     red: '#D32F2F',     // 红色
@@ -603,7 +603,7 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
       </group>
 
       <EffectComposer>
-        <Bloom luminanceThreshold={1.5} luminanceSmoothing={0.1} intensity={0.8} radius={0.5} mipmapBlur />
+        <Bloom luminanceThreshold={2.0} luminanceSmoothing={0.1} intensity={0.8} radius={0.5} mipmapBlur />
         <Vignette eskil={false} offset={0.1} darkness={1.2} />
       </EffectComposer>
     </>
