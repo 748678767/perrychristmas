@@ -64,13 +64,13 @@ const bodyPhotoPaths = [
 const CONFIG = {
   colors: {
     emerald: '#FFD700', // 祖母绿 (这里被设为金色了，可以改回 '#004225')
-    gold: '#FFD700',    // 金色
+    gold: '#FFCC00',    // 金色
     silver: '#ECEFF1',  // 银色
     red: '#D32F2F',     // 红色
     green: '#2E7D32',   // 绿色
     white: '#FFFFFF',   // 白色
     warmLight: '#FFD54F', // 暖光色
-    lights: ['#FF0000', '#00FF00', '#0000FF', '#FFFF00'], // 彩灯颜色
+    lights: ['#FF0000', '#00FF00', '#0000FF', '#FFCC00'], // 彩灯颜色
     borders: ['#FFFAF0', '#F0E68C', '#E6E6FA', '#FFB6C1', '#98FB98', '#87CEFA', '#FFDAB9'], // 拍立得边框颜色池
     giftColors: ['#D32F2F', '#FFD700', '#1976D2', '#2E7D32'], // 礼物盒颜色
     candyColors: ['#FF0000', '#FFFFFF'] // 糖果拐杖颜色
