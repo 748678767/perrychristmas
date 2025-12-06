@@ -415,7 +415,7 @@ const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 
 // --- Component: Golden Sparkles (金色闪光粒子) ---
 const GoldenSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
-  const count = 150;
+  const count = 80;
   const groupRef = useRef<THREE.Group>(null);
   const geometry = useMemo(() => new THREE.SphereGeometry(0.3, 8, 8), []);
 
@@ -452,7 +452,7 @@ const GoldenSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       const objData = data[i];
       
       const twinkle = (Math.sin(time * objData.speed + objData.timeOffset) + 1) / 2;
-      const intensity = isFormed ? (3 + twinkle * 8) : 0;
+      const intensity = isFormed ? (1 + twinkle * 3) : 0;
       
       if (mesh.material) {
         (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = intensity;
@@ -477,7 +477,7 @@ const GoldenSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
             emissiveIntensity={0}
             toneMapped={false}
             transparent
-            opacity={0.9}
+            opacity={0.7}
           />
         </mesh>
       ))}
@@ -491,7 +491,7 @@ const BurstSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   const [burstTime, setBurstTime] = useState(0);
   
   const { positions, scales, opacities } = useMemo(() => {
-    const count = 200;
+    const count = 100;
     const positions = new Float32Array(count * 3);
     const scales = new Float32Array(count);
     const opacities = new Float32Array(count);
@@ -525,7 +525,7 @@ const BurstSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       setBurstTime(Math.floor(time / 2));
       
       for (let i = 0; i < opacities.length; i++) {
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.2) {
           opacities[i] = 1.0;
         }
       }
@@ -547,10 +547,10 @@ const BurstSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
         <bufferAttribute attach="attributes-aOpacity" args={[opacities, 1]} />
       </bufferGeometry>
       <pointsMaterial
-        size={20}
+        size={15}
         color={CONFIG.colors.gold}
         transparent
-        opacity={0.9}
+        opacity={0.6}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
         depthWrite={false}
@@ -596,12 +596,12 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
            <GoldenSparkles state={sceneState} />
            <BurstSparkles state={sceneState} />
         </Suspense>
-        <Sparkles count={500} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
-        <Sparkles count={250} scale={45} size={15} speed={2.8} opacity={0.9} color={CONFIG.colors.gold} />
+        <Sparkles count={400} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
+        <Sparkles count={50} scale={45} size={12} speed={2.8} opacity={0.5} color={CONFIG.colors.gold} />
       </group>
 
       <EffectComposer>
-        <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.2} intensity={2.5} radius={0.8} mipmapBlur />
+        <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.1} intensity={1.5} radius={0.5} mipmapBlur />
         <Vignette eskil={false} offset={0.1} darkness={1.2} />
       </EffectComposer>
     </>
