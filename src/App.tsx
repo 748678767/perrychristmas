@@ -552,6 +552,37 @@ export default function GrandTreeApp() {
         </Canvas>
       </div>
       <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onStatus={setAiStatus} debugMode={debugMode} />
+ {/* UI - Merry Christmas 标题 */}
+      <div style={{
+        position: 'absolute',
+        top: '60px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 10,
+        textAlign: 'center',
+        pointerEvents: 'none'
+      }}>
+        <h1 style={{
+          fontSize: '48px',
+          fontFamily: 'serif',
+          color: '#FFD700',
+          textShadow: '0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4)',
+          margin: 0,
+          letterSpacing: '4px'
+        }}>
+          Merry Christmas!
+        </h1>
+        <p style={{
+          fontSize: '16px',
+          color: 'rgba(255, 215, 0, 0.6)',
+          marginTop: '10px',
+          letterSpacing: '3px',
+          fontFamily: 'serif'
+        }}>
+          ✨ Perry & Elva ✨
+        </p>
+      </div>
+      
 
       {/* UI - Stats */}
       <div style={{ position: 'absolute', bottom: '30px', left: '40px', color: '#888', zIndex: 10, fontFamily: 'sans-serif', userSelect: 'none' }}>
