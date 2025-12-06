@@ -101,7 +101,7 @@ const FoliageMaterial = shaderMaterial(
     vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
     // 🔴 修改这里：把 60.0 改为 30.0 或 40.0
     // 这会让每个“树叶”粒子变小，看起来不那么像大方块
-    gl_PointSize = (15.0 * (1.0 + aRandom)) / -mvPosition.z;
+    gl_PointSize = (60.0 * (1.0 + aRandom)) / -mvPosition.z;
     gl_Position = projectionMatrix * mvPosition;
     vMix = t;
   }`,
@@ -153,7 +153,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
         <bufferAttribute attach="attributes-aRandom" args={[randoms, 1]} />
       </bufferGeometry>
       {/* @ts-ignore */}
-      <foliageMaterial ref={materialRef} transparent depthWrite={false} depthTest={true} /> //blending={THREE.AdditiveBlending} 叠加混合模式
+      <foliageMaterial ref={materialRef} transparent depthWrite={false} blending={THREE.AdditiveBlending} /> 
     </points>
   );
 };
@@ -488,7 +488,7 @@ const GoldenSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 };
 
 // --- Component: Burst Sparkles (爆发式闪光) ---
-const BurstSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
+//((const BurstSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   const pointsRef = useRef<THREE.Points>(null);
   const [burstTime, setBurstTime] = useState(0);
   
@@ -559,8 +559,7 @@ const BurstSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       />
     </points>
   );
-};
-
+};))
 // 👆👆👆 添加到这里 👆👆👆
 
 // --- Main Scene Experience ---
@@ -595,11 +594,11 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
            <FairyLights state={sceneState} />
            <TopStar state={sceneState} />
             {/* 👇 添加金色闪光效果 */}
-          // <GoldenSparkles state={sceneState} />
-         //  <BurstSparkles state={sceneState} />
+          {/* <GoldenSparkles state={sceneState} */}
+        {/*  <BurstSparkles state={sceneState} /> */}
         </Suspense>
         <Sparkles count={400} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
-        <Sparkles count={50} scale={45} size={12} speed={2.8} opacity={0.3} color={CONFIG.colors.gold} />
+        
       </group>
 
       <EffectComposer>
