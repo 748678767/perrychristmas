@@ -442,12 +442,16 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
            <ChristmasElements state={sceneState} />
            <FairyLights state={sceneState} />
            <TopStar state={sceneState} />
+            {/* 👇 添加金色闪光效果 */}
+           <GoldenSparkles state={sceneState} />
+           <BurstSparkles state={sceneState} />
         </Suspense>
-        <Sparkles count={600} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
+        <Sparkles count={500} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
+        <Sparkles count={250} scale={45} size={15} speed={2.8} opacity={0.9} color={CONFIG.colors.gold} />
       </group>
 
       <EffectComposer>
-        <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.1} intensity={1.5} radius={0.5} mipmapBlur />
+        <Bloom luminanceThreshold={0.6} luminanceSmoothing={0.2} intensity={2.5} radius={0.8} mipmapBlur />
         <Vignette eskil={false} offset={0.1} darkness={1.2} />
       </EffectComposer>
     </>
