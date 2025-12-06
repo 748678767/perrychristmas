@@ -101,7 +101,7 @@ const FoliageMaterial = shaderMaterial(
     vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
     // 🔴 修改这里：把 60.0 改为 30.0 或 40.0
     // 这会让每个“树叶”粒子变小，看起来不那么像大方块
-    gl_PointSize = (30.0 * (1.0 + aRandom)) / -mvPosition.z;
+    gl_PointSize = (15.0 * (1.0 + aRandom)) / -mvPosition.z;
     gl_Position = projectionMatrix * mvPosition;
     vMix = t;
   }`,
@@ -153,7 +153,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
         <bufferAttribute attach="attributes-aRandom" args={[randoms, 1]} />
       </bufferGeometry>
       {/* @ts-ignore */}
-      <foliageMaterial ref={materialRef} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
+      <foliageMaterial ref={materialRef} transparent depthWrite={false} depthTest={true} /> //blending={THREE.AdditiveBlending} 叠加混合模式
     </points>
   );
 };
