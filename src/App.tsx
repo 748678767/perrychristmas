@@ -452,7 +452,7 @@ const GoldenSparkles = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       const objData = data[i];
       
       const twinkle = (Math.sin(time * objData.speed + objData.timeOffset) + 1) / 2;
-      const intensity = isFormed ? (1 + twinkle * 3) : 0;
+      const intensity = isFormed ? (0.5 + twinkle * 2) : 0;
       
       if (mesh.material) {
         (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = intensity;
@@ -594,14 +594,14 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
            <TopStar state={sceneState} />
             {/* 👇 添加金色闪光效果 */}
            <GoldenSparkles state={sceneState} />
-           <BurstSparkles state={sceneState} />
+         //  <BurstSparkles state={sceneState} />
         </Suspense>
         <Sparkles count={400} scale={50} size={8} speed={0.4} opacity={0.4} color={CONFIG.colors.silver} />
-        <Sparkles count={50} scale={45} size={12} speed={2.8} opacity={0.5} color={CONFIG.colors.gold} />
+        <Sparkles count={50} scale={45} size={12} speed={2.8} opacity={0.3} color={CONFIG.colors.gold} />
       </group>
 
       <EffectComposer>
-        <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.1} intensity={1.5} radius={0.5} mipmapBlur />
+        <Bloom luminanceThreshold={0.8} luminanceSmoothing={0.1} intensity={0.8} radius={0.5} mipmapBlur />
         <Vignette eskil={false} offset={0.1} darkness={1.2} />
       </EffectComposer>
     </>
