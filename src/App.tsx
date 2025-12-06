@@ -43,7 +43,7 @@ const CONFIG = {
   },
   counts: {
     foliage: 15000,
-    ornaments: 300,   // 拍立得照片数量
+    ornaments: 10,   // 拍立得照片数量
     elements: 200,    // 圣诞元素数量
     lights: 400       // 彩灯数量
   },
