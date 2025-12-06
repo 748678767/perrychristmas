@@ -28,7 +28,7 @@ const bodyPhotoPaths = [
 // --- 视觉配置 ---
 const CONFIG = {
   colors: {
-    emerald: '#B860B', // 纯正祖母绿#004225, 纯金色: #FFD700,暗金色8 #B860B,香槟金 #F7E7CE,橙金色 #FFA500 
+    emerald: '#FFD700', // 纯正祖母绿#004225, 纯金色: #FFD700,暗金色8 #B860B,香槟金 #F7E7CE,橙金色 #FFA500 
     gold: '#FFD700',
     silver: '#ECEFF1',
     red: '#D32F2F',
