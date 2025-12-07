@@ -10,8 +10,7 @@ import {
   useTexture
 } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
-import * as THREE from 'three';
-import { MathUtils, Vector3 } from 'three';
+import * as THREE from 'three'; 
 import * as random from 'maath/random';
 import { GestureRecognizer, FilesetResolver, DrawingUtils } from "@mediapipe/tasks-vision";
 
@@ -45,7 +44,7 @@ const useBackgroundMusic = () => {
 
 // --- 照片配置 ---
 const TOTAL_NUMBERED_PHOTOS = 6;
-const PHOTO_VERSION = '5';
+const PHOTO_VERSION = '6'; // 版本号更新，避免缓存
 const bodyPhotoPaths = [
   `/photos/top.jpg?v=${PHOTO_VERSION}`,
   ...Array.from({ length: TOTAL_NUMBERED_PHOTOS }, (_, i) => `/photos/${i + 1}.jpg?v=${PHOTO_VERSION}`)
@@ -72,7 +71,7 @@ const CONFIG = {
   photos: { body: bodyPhotoPaths }
 };
 
-// --- Shader Material ---
+// --- Shader Material (Foliage) ---
 const FoliageMaterial = shaderMaterial(
   { uTime: 0, uColor: new THREE.Color(CONFIG.colors.emerald), uProgress: 0 },
   `uniform float uTime; uniform float uProgress; attribute vec3 aTargetPos; attribute float aRandom;
@@ -140,7 +139,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   );
 };
 
-// --- Component: Interactive Photo Ornaments (修复高度与手势) ---
+// --- Component: Interactive Photo Ornaments ---
 const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPinching: boolean }) => {
   const textures = useTexture(CONFIG.photos.body);
   const count = CONFIG.counts.ornaments;
@@ -194,10 +193,7 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
     if (!groupRef.current) return;
     const isFormed = state === 'FORMED';
 
-    // [核心修正] 照片展示位置逻辑
-    // 使用本地坐标系 (0, 0, -12) 并转换为世界坐标
-    // 这意味着照片永远在相机“镜头”的正前方 12 个单位处
-    // 不受相机俯仰角度影响，永远在屏幕正中心
+    // 修正：照片展示在相机正前方
     const targetViewPos = new THREE.Vector3(0, 0, -12);
     targetViewPos.applyMatrix4(camera.matrixWorld);
 
@@ -216,8 +212,7 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
       group.position.copy(objData.currentPos);
 
       if (isActive) {
-        group.lookAt(camera.position); // 面向相机
-        // [微调] 稍微抵消一点相机旋转，让照片更正
+        group.lookAt(camera.position);
         group.rotation.z = camera.rotation.z;
       } else if (isFormed) {
          const lookAtPos = new THREE.Vector3(group.position.x * 2, group.position.y, group.position.z * 2);
@@ -453,7 +448,7 @@ const Experience = ({ sceneState, rotationSpeed, isPinching }: { sceneState: 'CH
   );
 };
 
-// --- Gesture Controller (Strict Separation Logic) ---
+// --- Gesture Controller (Strict Separation + Position Fix) ---
 const GestureController = ({ onGesture, onMove, onPinch, onStatus, debugMode }: any) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -512,7 +507,6 @@ const GestureController = ({ onGesture, onMove, onPinch, onStatus, debugMode }: 
               const pinchDist = Math.sqrt(Math.pow(thumbTip.x - indexTip.x, 2) + Math.pow(thumbTip.y - indexTip.y, 2));
 
               // --- 2. 计算【其他三指开合度】 (Middle, Ring, Pinky Tips <-> Wrist)
-              // 握拳时，指尖离手腕很近；伸开时，指尖离手腕远
               const middleTip = landmarks[12];
               const ringTip = landmarks[16];
               const pinkyTip = landmarks[20];
@@ -520,26 +514,25 @@ const GestureController = ({ onGesture, onMove, onPinch, onStatus, debugMode }: 
               const getDistToWrist = (p: any) => Math.sqrt(Math.pow(p.x - wrist.x, 2) + Math.pow(p.y - wrist.y, 2));
               const avgOtherFingersDist = (getDistToWrist(middleTip) + getDistToWrist(ringTip) + getDistToWrist(pinkyTip)) / 3;
 
-              // 阈值设定 (需要根据实际摄像头调整，通常 0.1 - 0.2 是分界线)
-              const FIST_THRESHOLD = 0.25; // 如果平均距离小于这个值，说明手指卷曲 -> 握拳
-              const PINCH_CONTACT_THRESHOLD = 0.08; // 捏合接触距离
+              // 阈值设定
+              const FIST_THRESHOLD = 0.25; 
+              const PINCH_CONTACT_THRESHOLD = 0.08; 
 
               // --- 3. 严格的互斥逻辑 ---
               let isPinching = false;
 
-              // 逻辑A: 如果 MediaPipe 直接识别为 Closed_Fist，或者其他三指卷曲 -> 握拳模式
+              // 逻辑A: 握拳模式 (优先级最高)
               if (name === "Closed_Fist" || avgOtherFingersDist < FIST_THRESHOLD) {
                  onGesture("FORMED"); // 变树
                  isPinching = false;
-                 if (debugMode) onStatus(`状态: 握拳 (Tree) | Dist: ${avgOtherFingersDist.toFixed(2)}`);
+                 if (debugMode) onStatus(`状态: 握拳 (Tree)`);
               } 
-              // 逻辑B: 如果不是握拳，且大拇指食指靠得近 -> 捏合模式
+              // 逻辑B: 捏合模式 (仅当其他手指张开时)
               else if (pinchDist < PINCH_CONTACT_THRESHOLD) {
-                 // 这里不需要改变树的状态，保持原样，只触发捏合
                  isPinching = true;
-                 if (debugMode) onStatus(`状态: 捏合 (View) | Pinch: ${pinchDist.toFixed(2)}`);
+                 if (debugMode) onStatus(`状态: 捏合 (View)`);
               } 
-              // 逻辑C: 张开手
+              // 逻辑C: 张开/散开
               else if (name === "Open_Palm" || avgOtherFingersDist > 0.4) {
                  onGesture("CHAOS"); // 散开
                  isPinching = false;
@@ -548,7 +541,6 @@ const GestureController = ({ onGesture, onMove, onPinch, onStatus, debugMode }: 
 
               onPinch(isPinching);
 
-              // 移动控制
               const speed = (0.5 - landmarks[0].x) * 0.15;
               onMove(Math.abs(speed) > 0.02 ? speed : 0);
 
@@ -567,7 +559,7 @@ const GestureController = ({ onGesture, onMove, onPinch, onStatus, debugMode }: 
   return (
     <>
       <video ref={videoRef} style={{ display: 'none' }} playsInline muted autoPlay />
-      <canvas ref={canvasRef} style={{ position: 'fixed', bottom: 10, right: 10, width: debugMode ? '200px' : '0px', height: 'auto', zIndex: 100, transform: 'scaleX(-1)', border: debugMode ? '1px solid gold' : 'none' }} />
+      <canvas ref={canvasRef} style={{ position: 'fixed', top: 10, right: 10, width: debugMode ? '200px' : '0px', height: 'auto', zIndex: 100, transform: 'scaleX(-1)', border: debugMode ? '1px solid gold' : 'none' }} />
     </>
   );
 };
