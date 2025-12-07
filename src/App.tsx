@@ -10,7 +10,7 @@ import {
   useTexture
 } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
-import * as THREE from 'three'; 
+import * as THREE from 'three';
 import * as random from 'maath/random';
 import { GestureRecognizer, FilesetResolver, DrawingUtils } from "@mediapipe/tasks-vision";
 
@@ -44,7 +44,7 @@ const useBackgroundMusic = () => {
 
 // --- 照片配置 ---
 const TOTAL_NUMBERED_PHOTOS = 6;
-const PHOTO_VERSION = '6'; // 版本号更新，避免缓存
+const PHOTO_VERSION = '7'; // 版本号更新
 const bodyPhotoPaths = [
   `/photos/top.jpg?v=${PHOTO_VERSION}`,
   ...Array.from({ length: TOTAL_NUMBERED_PHOTOS }, (_, i) => `/photos/${i + 1}.jpg?v=${PHOTO_VERSION}`)
@@ -139,7 +139,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   );
 };
 
-// --- Component: Interactive Photo Ornaments ---
+// --- Component: Interactive Photo Ornaments (Fixed Centering & No Tilt) ---
 const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPinching: boolean }) => {
   const textures = useTexture(CONFIG.photos.body);
   const count = CONFIG.counts.ornaments;
@@ -193,27 +193,31 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
     if (!groupRef.current) return;
     const isFormed = state === 'FORMED';
 
-    // 修正：照片展示在相机正前方
-    const targetViewPos = new THREE.Vector3(0, 0, -12);
-    targetViewPos.applyMatrix4(camera.matrixWorld);
-
     groupRef.current.children.forEach((group, i) => {
       const objData = data[i];
       const isActive = i === activeIndex;
 
       let targetPosition;
       if (isActive) {
-        targetPosition = targetViewPos;
+        // [核心修正]: 
+        // 1. 使用 camera.matrixWorld 将本地坐标 (0,0,-12) 转换为世界坐标。
+        //    (0,0,0) 是相机位置，Z轴负方向是相机正前方。
+        //    -12 意味着在相机正前方12个单位，这样绝对居中，不会因为俯视而偏低。
+        const cameraForwardPos = new THREE.Vector3(0, 0, -12);
+        cameraForwardPos.applyMatrix4(camera.matrixWorld);
+        targetPosition = cameraForwardPos;
       } else {
         targetPosition = isFormed ? objData.targetPos : objData.chaosPos;
       }
 
-      objData.currentPos.lerp(targetPosition, delta * (isActive ? 5.0 : 1.0));
+      objData.currentPos.lerp(targetPosition, delta * (isActive ? 8.0 : 1.0));
       group.position.copy(objData.currentPos);
 
       if (isActive) {
-        group.lookAt(camera.position);
-        group.rotation.z = camera.rotation.z;
+        // [核心修正]:
+        // 直接复制相机的旋转四元数。
+        // 这样照片平面会完全平行于相机镜头平面（屏幕），彻底消除倾斜。
+        group.quaternion.copy(camera.quaternion);
       } else if (isFormed) {
          const lookAtPos = new THREE.Vector3(group.position.x * 2, group.position.y, group.position.z * 2);
          group.lookAt(lookAtPos);
