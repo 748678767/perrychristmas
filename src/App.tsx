@@ -44,7 +44,7 @@ const useBackgroundMusic = () => {
 
 // --- 照片配置 ---
 const TOTAL_NUMBERED_PHOTOS = 6;
-const PHOTO_VERSION = '8'; // 更新版本号
+const PHOTO_VERSION = '9'; // 版本号更新
 const bodyPhotoPaths = [
   `/photos/top.jpg?v=${PHOTO_VERSION}`,
   ...Array.from({ length: TOTAL_NUMBERED_PHOTOS }, (_, i) => `/photos/${i + 1}.jpg?v=${PHOTO_VERSION}`)
@@ -139,7 +139,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   );
 };
 
-// --- Component: Interactive Photo Ornaments (Fixed Coordinates) ---
+// --- Component: Interactive Photo Ornaments (Thick 3D Frame) ---
 const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPinching: boolean }) => {
   const textures = useTexture(CONFIG.photos.body);
   const count = CONFIG.counts.ornaments;
@@ -148,8 +148,11 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  const borderGeometry = useMemo(() => new THREE.PlaneGeometry(1.2, 1.5), []);
-  const photoGeometry = useMemo(() => new THREE.PlaneGeometry(1, 1), []);
+  // [修改] 使用 BoxGeometry 增加厚度
+  // 边框：宽1.2, 高1.5, 厚0.06
+  const borderGeometry = useMemo(() => new THREE.BoxGeometry(1.2, 1.5, 0.06), []);
+  // 照片：宽1.0, 高1.0, 厚0.01 (薄片贴在表面)
+  const photoGeometry = useMemo(() => new THREE.BoxGeometry(1.0, 1.0, 0.01), []);
 
   const data = useMemo(() => {
     return new Array(count).fill(0).map((_, i) => {
@@ -193,13 +196,8 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
     if (!groupRef.current) return;
     const isFormed = state === 'FORMED';
 
-    // [核心修正] 完美居中逻辑
-    // 1. 获取相机正前方 15 个单位的世界坐标点
-    const targetWorldPos = new THREE.Vector3(0, 0, -15);
+    const targetWorldPos = new THREE.Vector3(0, 0, -12);
     targetWorldPos.applyMatrix4(camera.matrixWorld);
-
-    // 2. 将该世界坐标点 转换回当前 Group 的本地坐标系
-    // 这一步会自动补偿 Group 的 position=[0, -6, 0] 带来的偏移
     const targetLocalPos = groupRef.current.worldToLocal(targetWorldPos.clone());
 
     groupRef.current.children.forEach((group, i) => {
@@ -208,7 +206,7 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
 
       let targetPosition;
       if (isActive) {
-        targetPosition = targetLocalPos; // 使用修正后的本地坐标
+        targetPosition = targetLocalPos;
       } else {
         targetPosition = isFormed ? objData.targetPos : objData.chaosPos;
       }
@@ -217,7 +215,6 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
       group.position.copy(objData.currentPos);
 
       if (isActive) {
-        // 让照片完全平行于相机（消除任何倾斜）
         group.quaternion.copy(camera.quaternion);
       } else if (isFormed) {
          const lookAtPos = new THREE.Vector3(group.position.x * 2, group.position.y, group.position.z * 2);
@@ -239,13 +236,24 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
     <group ref={groupRef}>
       {data.map((obj, i) => (
         <group key={i} rotation={state === 'CHAOS' ? obj.chaosRot : [0,0,0]}>
-          <group position={[0, 0, 0.01]}>
-            <mesh geometry={photoGeometry}>
-              <meshStandardMaterial map={textures[obj.textureIndex]} roughness={0.4} emissiveMap={textures[obj.textureIndex]} emissive={0xffffff} emissiveIntensity={0.8} side={THREE.DoubleSide} />
+          {/* 使用 Group 包装，整体偏移，让中心点在照片中心 */}
+          <group position={[0, 0, 0]}>
+            
+            {/* 1. 实体相框 (厚度 0.06) */}
+            <mesh geometry={borderGeometry} position={[0, -0.15, 0]}>
+              <meshStandardMaterial color={obj.borderColor} roughness={0.8} metalness={0.1} />
             </mesh>
-            <mesh geometry={borderGeometry} position={[0, -0.15, -0.01]}>
-              <meshStandardMaterial color={obj.borderColor} roughness={0.8} side={THREE.DoubleSide} />
+
+            {/* 2. 正面照片 (薄片，位置前移 0.035 = 0.03(框半厚) + 0.005(照片半厚)) */}
+            <mesh geometry={photoGeometry} position={[0, 0, 0.035]}>
+              <meshStandardMaterial map={textures[obj.textureIndex]} roughness={0.4} emissiveMap={textures[obj.textureIndex]} emissive={0xffffff} emissiveIntensity={0.6} />
             </mesh>
+
+            {/* 3. 背面照片 (可选，为了360度展示，位置后移 -0.035) */}
+            <mesh geometry={photoGeometry} position={[0, 0, -0.035]} rotation={[0, Math.PI, 0]}>
+              <meshStandardMaterial map={textures[obj.textureIndex]} roughness={0.4} emissiveMap={textures[obj.textureIndex]} emissive={0xffffff} emissiveIntensity={0.6} />
+            </mesh>
+
           </group>
         </group>
       ))}
