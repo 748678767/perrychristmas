@@ -11,7 +11,7 @@ import {
 } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import { MathUtils, Vector3 } from 'three';
+// [修复] 移除了 import { MathUtils, Vector3 } from 'three' 以解决构建错误
 import * as random from 'maath/random';
 import { GestureRecognizer, FilesetResolver, DrawingUtils } from "@mediapipe/tasks-vision";
 
@@ -45,20 +45,20 @@ const useBackgroundMusic = () => {
 
 // --- 照片配置 ---
 const TOTAL_NUMBERED_PHOTOS = 6;
-const PHOTO_VERSION = '4'; // 版本号更新
+const PHOTO_VERSION = '5'; // 版本号更新
 const bodyPhotoPaths = [
   `/photos/top.jpg?v=${PHOTO_VERSION}`,
   ...Array.from({ length: TOTAL_NUMBERED_PHOTOS }, (_, i) => `/photos/${i + 1}.jpg?v=${PHOTO_VERSION}`)
 ];
 
-// --- 视觉配置 (调亮色系) ---
+// --- 视觉配置 ---
 const CONFIG = {
   colors: {
-    emerald: '#008f4c', // [修改] 更亮、更鲜艳的祖母绿
+    emerald: '#008f4c',
     gold: '#FFD700',
-    ribbonRed: '#E53935', // [修改] 更亮的红色
+    ribbonRed: '#E53935',
     snow: '#FFFFFF',
-    lights: ['#FF3333', '#33FF33', '#3388FF', '#FFD700'], // [修改] 提高彩灯亮度
+    lights: ['#FF3333', '#33FF33', '#3388FF', '#FFD700'],
     borders: ['#FFFBE6', '#F7F1D8', '#F0F4FF', '#FFE6EB', '#E6FFEA', '#E6F7FF'],
     giftColors: ['#C62828', '#1565C0', '#2E7D32', '#EF6C00'],
   },
@@ -72,7 +72,7 @@ const CONFIG = {
   photos: { body: bodyPhotoPaths }
 };
 
-// --- Shader Material (Foliage - 调亮) ---
+// --- Shader Material (Foliage) ---
 const FoliageMaterial = shaderMaterial(
   { uTime: 0, uColor: new THREE.Color(CONFIG.colors.emerald), uProgress: 0 },
   `uniform float uTime; uniform float uProgress; attribute vec3 aTargetPos; attribute float aRandom;
@@ -84,16 +84,15 @@ const FoliageMaterial = shaderMaterial(
     float t = cubicInOut(uProgress);
     vec3 finalPos = mix(position, aTargetPos + noise, t);
     vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
-    gl_PointSize = (60.0 * (1.0 + aRandom)) / -mvPosition.z; // [修改] 稍微加大粒子
+    gl_PointSize = (60.0 * (1.0 + aRandom)) / -mvPosition.z;
     gl_Position = projectionMatrix * mvPosition;
     vMix = t;
   }`,
   `uniform vec3 uColor; varying float vMix;
   void main() {
     float r = distance(gl_PointCoord, vec2(0.5)); if (r > 0.5) discard;
-    // [修改] 这里的颜色计算逻辑调亮了
-    vec3 chaosColor = uColor * 0.8; // 混沌状态也亮一点
-    vec3 formedColor = uColor * 1.8 + vec3(0.15, 0.15, 0.05); // 成型状态更亮，带金色高光
+    vec3 chaosColor = uColor * 0.8;
+    vec3 formedColor = uColor * 1.8 + vec3(0.15, 0.15, 0.05);
     vec3 finalColor = mix(chaosColor, formedColor, vMix);
     gl_FragColor = vec4(finalColor, 1.0);
   }`
@@ -125,7 +124,8 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   useFrame((rootState, delta) => {
     if (materialRef.current) {
       materialRef.current.uTime = rootState.clock.elapsedTime;
-      materialRef.current.uProgress = MathUtils.damp(materialRef.current.uProgress, state === 'FORMED' ? 1 : 0, 1.5, delta);
+      // [修复] 使用 THREE.MathUtils 替代 MathUtils
+      materialRef.current.uProgress = THREE.MathUtils.damp(materialRef.current.uProgress, state === 'FORMED' ? 1 : 0, 1.5, delta);
     }
   });
   return (
@@ -141,7 +141,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   );
 };
 
-// --- Component: Interactive Photo Ornaments (修正位置逻辑) ---
+// --- Component: Interactive Photo Ornaments ---
 const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPinching: boolean }) => {
   const textures = useTexture(CONFIG.photos.body);
   const count = CONFIG.counts.ornaments;
@@ -180,7 +180,7 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
       let closestIdx = -1;
       groupRef.current.children.forEach((child, i) => {
         const dist = child.position.distanceTo(camera.position);
-        if (dist < minDist && dist < 40) { // 放宽最大抓取距离
+        if (dist < minDist && dist < 40) {
           minDist = dist;
           closestIdx = i;
         }
@@ -195,8 +195,6 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
     if (!groupRef.current) return;
     const isFormed = state === 'FORMED';
 
-    // [修正] 目标位置计算：严格沿着相机的朝向，在相机正前方 15 单位处
-    // 这样无论相机在哪，照片都在屏幕正中间
     const viewDirection = new THREE.Vector3();
     camera.getWorldDirection(viewDirection); 
     viewDirection.multiplyScalar(15); 
@@ -213,12 +211,11 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
         targetPosition = isFormed ? objData.targetPos : objData.chaosPos;
       }
 
-      // 选中时移动速度更快 (delta * 6)
       objData.currentPos.lerp(targetPosition, delta * (isActive ? 6.0 : 1.0));
       group.position.copy(objData.currentPos);
 
       if (isActive) {
-        group.lookAt(camera.position); // 面向相机
+        group.lookAt(camera.position);
       } else if (isFormed) {
          const lookAtPos = new THREE.Vector3(group.position.x * 2, group.position.y, group.position.z * 2);
          group.lookAt(lookAtPos);
@@ -228,7 +225,6 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
          group.rotation.y += delta * 0.5;
       }
       
-      // 选中时放大倍数增加
       const targetScale = isActive ? 4.0 : objData.scale;
       const currentScale = group.scale.x;
       const newScale = THREE.MathUtils.lerp(currentScale, targetScale, delta * 5);
@@ -448,16 +444,13 @@ const Experience = ({ sceneState, rotationSpeed, isPinching }: { sceneState: 'CH
       <PerspectiveCamera makeDefault position={[0, 8, 60]} fov={45} />
       <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} minDistance={20} maxDistance={100} autoRotate={rotationSpeed === 0 && sceneState === 'FORMED' && !isPinching} autoRotateSpeed={0.5} maxPolarAngle={Math.PI / 1.8} />
 
-      {/* [修改] 背景不再是死黑，而是带有微弱的深蓝色/午夜绿 */}
       <color attach="background" args={['#00100a']} />
       <fog attach="fog" args={['#00100a', 60, 150]} />
       
       <Stars radius={100} depth={50} count={6000} factor={4} saturation={0} fade speed={1} />
       <Environment preset="night" background={false} />
 
-      {/* [修改] 增加环境光亮度，解决太暗问题 */}
       <ambientLight intensity={0.7} color="#ffffff" />
-      {/* [修改] 增加半球光，模拟天空光和地面反射，增加层次感 */}
       <hemisphereLight intensity={0.5} color="#ffffff" groundColor="#444444" />
       
       <spotLight position={[50, 50, 50]} angle={0.3} penumbra={1} intensity={150} color={CONFIG.colors.gold} castShadow />
@@ -544,8 +537,6 @@ const GestureController = ({ onGesture, onMove, onPinch, onStatus, debugMode }: 
               const indexTip = landmarks[8];
               const distance = Math.sqrt(Math.pow(thumbTip.x - indexTip.x, 2) + Math.pow(thumbTip.y - indexTip.y, 2));
               
-              // [修改] 灵敏度提高：阈值从 0.05 增加到 0.1
-              // 只要手指靠得比较近就算捏合，不需要完全贴合
               const isPinching = distance < 0.1; 
               onPinch(isPinching);
 
