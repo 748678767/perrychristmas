@@ -44,7 +44,7 @@ const useBackgroundMusic = () => {
 
 // --- 照片配置 ---
 const TOTAL_NUMBERED_PHOTOS = 6;
-const PHOTO_VERSION = '7'; // 版本号更新
+const PHOTO_VERSION = '8'; // 更新版本号
 const bodyPhotoPaths = [
   `/photos/top.jpg?v=${PHOTO_VERSION}`,
   ...Array.from({ length: TOTAL_NUMBERED_PHOTOS }, (_, i) => `/photos/${i + 1}.jpg?v=${PHOTO_VERSION}`)
@@ -71,7 +71,7 @@ const CONFIG = {
   photos: { body: bodyPhotoPaths }
 };
 
-// --- Shader Material (Foliage) ---
+// --- Shader Material ---
 const FoliageMaterial = shaderMaterial(
   { uTime: 0, uColor: new THREE.Color(CONFIG.colors.emerald), uProgress: 0 },
   `uniform float uTime; uniform float uProgress; attribute vec3 aTargetPos; attribute float aRandom;
@@ -139,7 +139,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
   );
 };
 
-// --- Component: Interactive Photo Ornaments (Fixed Centering & No Tilt) ---
+// --- Component: Interactive Photo Ornaments (Fixed Coordinates) ---
 const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPinching: boolean }) => {
   const textures = useTexture(CONFIG.photos.body);
   const count = CONFIG.counts.ornaments;
@@ -193,30 +193,31 @@ const PhotoOrnaments = ({ state, isPinching }: { state: 'CHAOS' | 'FORMED', isPi
     if (!groupRef.current) return;
     const isFormed = state === 'FORMED';
 
+    // [核心修正] 完美居中逻辑
+    // 1. 获取相机正前方 15 个单位的世界坐标点
+    const targetWorldPos = new THREE.Vector3(0, 0, -15);
+    targetWorldPos.applyMatrix4(camera.matrixWorld);
+
+    // 2. 将该世界坐标点 转换回当前 Group 的本地坐标系
+    // 这一步会自动补偿 Group 的 position=[0, -6, 0] 带来的偏移
+    const targetLocalPos = groupRef.current.worldToLocal(targetWorldPos.clone());
+
     groupRef.current.children.forEach((group, i) => {
       const objData = data[i];
       const isActive = i === activeIndex;
 
       let targetPosition;
       if (isActive) {
-        // [核心修正]: 
-        // 1. 使用 camera.matrixWorld 将本地坐标 (0,0,-12) 转换为世界坐标。
-        //    (0,0,0) 是相机位置，Z轴负方向是相机正前方。
-        //    -12 意味着在相机正前方12个单位，这样绝对居中，不会因为俯视而偏低。
-        const cameraForwardPos = new THREE.Vector3(0, 0, -12);
-        cameraForwardPos.applyMatrix4(camera.matrixWorld);
-        targetPosition = cameraForwardPos;
+        targetPosition = targetLocalPos; // 使用修正后的本地坐标
       } else {
         targetPosition = isFormed ? objData.targetPos : objData.chaosPos;
       }
 
-      objData.currentPos.lerp(targetPosition, delta * (isActive ? 8.0 : 1.0));
+      objData.currentPos.lerp(targetPosition, delta * (isActive ? 5.0 : 1.0));
       group.position.copy(objData.currentPos);
 
       if (isActive) {
-        // [核心修正]:
-        // 直接复制相机的旋转四元数。
-        // 这样照片平面会完全平行于相机镜头平面（屏幕），彻底消除倾斜。
+        // 让照片完全平行于相机（消除任何倾斜）
         group.quaternion.copy(camera.quaternion);
       } else if (isFormed) {
          const lookAtPos = new THREE.Vector3(group.position.x * 2, group.position.y, group.position.z * 2);
@@ -452,7 +453,7 @@ const Experience = ({ sceneState, rotationSpeed, isPinching }: { sceneState: 'CH
   );
 };
 
-// --- Gesture Controller (Strict Separation + Position Fix) ---
+// --- Gesture Controller ---
 const GestureController = ({ onGesture, onMove, onPinch, onStatus, debugMode }: any) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -505,12 +506,10 @@ const GestureController = ({ onGesture, onMove, onPinch, onStatus, debugMode }: 
               const landmarks = results.landmarks[0];
               const wrist = landmarks[0];
 
-              // --- 1. 计算【捏合距离】(Thumb Tip <-> Index Tip)
               const thumbTip = landmarks[4];
               const indexTip = landmarks[8];
               const pinchDist = Math.sqrt(Math.pow(thumbTip.x - indexTip.x, 2) + Math.pow(thumbTip.y - indexTip.y, 2));
 
-              // --- 2. 计算【其他三指开合度】 (Middle, Ring, Pinky Tips <-> Wrist)
               const middleTip = landmarks[12];
               const ringTip = landmarks[16];
               const pinkyTip = landmarks[20];
@@ -518,27 +517,22 @@ const GestureController = ({ onGesture, onMove, onPinch, onStatus, debugMode }: 
               const getDistToWrist = (p: any) => Math.sqrt(Math.pow(p.x - wrist.x, 2) + Math.pow(p.y - wrist.y, 2));
               const avgOtherFingersDist = (getDistToWrist(middleTip) + getDistToWrist(ringTip) + getDistToWrist(pinkyTip)) / 3;
 
-              // 阈值设定
               const FIST_THRESHOLD = 0.25; 
               const PINCH_CONTACT_THRESHOLD = 0.08; 
 
-              // --- 3. 严格的互斥逻辑 ---
               let isPinching = false;
 
-              // 逻辑A: 握拳模式 (优先级最高)
               if (name === "Closed_Fist" || avgOtherFingersDist < FIST_THRESHOLD) {
-                 onGesture("FORMED"); // 变树
+                 onGesture("FORMED");
                  isPinching = false;
                  if (debugMode) onStatus(`状态: 握拳 (Tree)`);
               } 
-              // 逻辑B: 捏合模式 (仅当其他手指张开时)
               else if (pinchDist < PINCH_CONTACT_THRESHOLD) {
                  isPinching = true;
                  if (debugMode) onStatus(`状态: 捏合 (View)`);
               } 
-              // 逻辑C: 张开/散开
               else if (name === "Open_Palm" || avgOtherFingersDist > 0.4) {
-                 onGesture("CHAOS"); // 散开
+                 onGesture("CHAOS");
                  isPinching = false;
                  if (debugMode) onStatus(`状态: 张开 (Chaos)`);
               }
