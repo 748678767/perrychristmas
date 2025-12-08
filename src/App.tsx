@@ -146,7 +146,8 @@ const getTreePosition = () => {
 };
 
 // --- 组件: 忽大忽小的金色星尘 ---
-const PulsingDust = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
+// [修复] 移除了未使用的 'state' 参数
+const PulsingDust = () => {
   const materialRef = useRef<any>(null);
   const { positions, scales, speeds } = useMemo(() => {
     const count = CONFIG.counts.dust;
@@ -594,7 +595,8 @@ const Experience = ({ sceneState, manualRotationSpeed, isPinching }: any) => {
       <spotLight position={[-30, 20, -10]} angle={0.5} penumbra={1} intensity={50} color={CONFIG.colors.warmLight} />
       
       <group ref={groupRef} position={[0, -8, 0]}>
-        <PulsingDust state={sceneState} />
+        {/* [修复] PulsingDust 不再传递 props */}
+        <PulsingDust />
         <Foliage state={sceneState} />
         <Suspense fallback={null}>
            <PhotoOrnaments state={sceneState} isPinching={isPinching} />
